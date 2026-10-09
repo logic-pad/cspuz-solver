@@ -18,33 +18,64 @@ A solver for [Logic Pad](https://logic-pad.com) based on cspuz.
 
 Some "exceptional" clue arrangements such as "galaxies" on a corner of cell are intentionally unsupported because of their unnatural behavior on Logic Pad.
 
+# Repository layout
+
+This repo has two parts:
+
+- `packages/logic-pad-solver-core` — the solver, published to npm as [`logic-pad-solver-core`](https://www.npmjs.com/package/logic-pad-solver-core).
+- the web app at the repo root (a Vite + React front-end that consumes the package above via a `file:` dependency).
+
 # Build
 
 Prerequisites:
 
-- Clone [enigma_csp](https://github.com/semiexp/enigma_csp) to `../enigma_csp` (relative to this file `README.md`)
-- Install Rust as well as [emscripten](https://emscripten.org/)
-- Make sure that a submodule `src/logic-pad` is correctly cloned. For this submodule, we have to make a change as follows (TODO: make this unnecessary):
+- Install [Rust](https://www.rust-lang.org/) with the `wasm32-unknown-emscripten` target:
+
+  ```
+  rustup target add wasm32-unknown-emscripten
+  ```
+
+- Install [emscripten](https://emscripten.org/) (emsdk). Activate it so that `emcc` is on your `PATH` before building.
+- Clone [`cspuz_core`](https://github.com/semiexp/cspuz_core) **next to** this repository (as a sibling directory, not inside it). The Rust solver refers to it through the relative path `../../../../cspuz_core`, so the layout must be:
+
+  ```
+  <some-dir>/
+  ├── cspuz_core/          # git clone --recursive https://github.com/semiexp/cspuz_core.git
+  └── logic-pad-solver/    # this repository
+  ```
+
+  Use `--recursive` because `cspuz_core` has its own submodules.
+
+> Note: `@logic-pad/core` used to be vendored as a git submodule under `src/logic-pad` (which required a manual patch to `streamCompressor.ts`). It is now a plain npm dependency, so there is nothing to clone or patch — `npm install` handles it.
+
+> The `build-rust` script uses POSIX commands (`cd`, `cp`, `&&`); on Windows run it from a POSIX shell such as WSL or Git Bash.
+
+## Build & publish the npm package (`logic-pad-solver-core`)
 
 ```
---- a/src/data/serializer/compressor/streamCompressor.ts
-+++ b/src/data/serializer/compressor/streamCompressor.ts
-@@ -1,10 +1,12 @@
- import CompressorBase from './compressorBase';
- 
- function ensureCompressionStream() {
-+  /*
-   if (!globalThis.CompressionStream || !globalThis.DecompressionStream) {
-     console.log('CompressionStream not supported. Loading polyfill.');
-     return import('../../../polyfill/streamPolyfill');
-   }
-+  */
-   return Promise.resolve();
- }
+cd packages/logic-pad-solver-core
+npm install
+npm run build-rust   # compiles the Rust solver to WebAssembly -> src/core/solver.js
+npm pack             # produces logic-pad-solver-core-<version>.tgz
 ```
 
-How to build:
+To publish, either run `npm publish --provenance --access public` from that directory, or trigger the **Publish logic-pad-solver-core** workflow (`.github/workflows/publish.yml`) on GitHub, which sets up the toolchain and publishes for you.
 
-- `npm run build-rust`: Build internal solver. This should be run before `npm run dev` and `npm run build`.
-- `npm run dev`: Start the dev server.
-- `npm run build`: Create a release build.
+## Build / run the web app
+
+From the repo root:
+
+```
+npm install
+# the app links logic-pad-solver-core via `file:`, so build the solver first:
+(cd packages/logic-pad-solver-core && npm run build-rust)
+npm run dev          # start the dev server
+npm run build        # create a release build (dist/)
+```
+
+## Test
+
+```
+cd packages/logic-pad-solver-core
+npm test
+```
