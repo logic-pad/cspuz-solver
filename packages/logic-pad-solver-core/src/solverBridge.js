@@ -1,10 +1,10 @@
-import Module from "./core/solver.js";
+import Module from './core/solver.js';
 
 let Solver = null;
 
-export function solveLogicPad(data, underclued) {
+export async function solveLogicPad(data, underclued) {
   if (Solver === null) {
-    Solver = Module();
+    Solver = await Module();
   }
 
   const dataEncoded = new TextEncoder().encode(JSON.stringify(data));
@@ -14,7 +14,11 @@ export function solveLogicPad(data, underclued) {
   let res = Solver._solve_puzzle(buf, dataEncoded.length, underclued ? 1 : 0);
   Solver._free(buf);
 
-  const length = Solver.HEAPU8[res] | (Solver.HEAPU8[res + 1] << 8) | (Solver.HEAPU8[res + 2] << 16) | (Solver.HEAPU8[res + 3] << 24);
+  const length =
+    Solver.HEAPU8[res] |
+    (Solver.HEAPU8[res + 1] << 8) |
+    (Solver.HEAPU8[res + 2] << 16) |
+    (Solver.HEAPU8[res + 3] << 24);
 
   const ansStr = new TextDecoder().decode(Solver.HEAPU8.slice(res + 4, res + 4 + length));
   return JSON.parse(ansStr);

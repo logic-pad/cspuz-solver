@@ -16,7 +16,23 @@ def main():
     output = root + ".js"
 
     if os.path.basename(root) == "solver":
-        extra_args += ["-s", "EXPORTED_FUNCTIONS=_solve_puzzle,_malloc,_free"]
+        extra_args += [
+            "-s",
+            "EXPORTED_FUNCTIONS=_solve_puzzle,_malloc,_free",
+            "-s",
+            "EXPORTED_RUNTIME_METHODS=HEAPU8",
+        ]
+
+    remove_arg = "-sSIDE_MODULE=2"
+    if remove_arg in extra_args:
+        extra_args.remove(remove_arg)
+
+    # Ensure C++ standard library and ABI support are linked
+    cpp_libs = ["-lc++", "-lc++abi"]
+    for lib in cpp_libs:
+        if lib not in extra_args:
+            extra_args.append(lib)
+
     args = ["emcc", "-o", output] + extra_args
     subprocess.check_call(args)
 

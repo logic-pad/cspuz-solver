@@ -1,38 +1,43 @@
 import { useState } from 'react';
 import { TileData } from '@logic-pad/core';
 
-import { urlToPuzzle, puzzleToJson } from './jsonify';
+import { gridToJson } from './jsonify';
 import { AnswerBoard } from './board';
 
-import { SolverResult } from "logic-pad-solver-core";
+import { SolverResult } from 'logic-pad-solver-core';
+import { urlToPuzzle } from './parser';
+import { Remote } from 'comlink';
 
 type AnswerData = {
   board: readonly (readonly TileData[])[];
-  answer: ("light" | "dark" | null)[][];
+  answer: ('light' | 'dark' | null)[][];
 };
 
-let workerInstance: any = null;
+let workerInstance: Remote<typeof import('./worker')> = null!;
 
-const countTilesRemaining = (board: readonly (readonly TileData[])[], answer: ("light" | "dark" | null)[][]): number => {
+const countTilesRemaining = (
+  board: readonly (readonly TileData[])[],
+  answer: ('light' | 'dark' | null)[][],
+): number => {
   let remaining = 0;
 
   for (let y = 0; y < board.length; y++) {
     for (let x = 0; x < board[y].length; x++) {
-      if (board[y][x].exists && !board[y][x].fixed && board[y][x].color === "gray" && answer[y][x] !== null) {
+      if (board[y][x].exists && !board[y][x].fixed && board[y][x].color === 'gray' && answer[y][x] !== null) {
         remaining++;
       }
     }
   }
 
   return remaining;
-}
+};
 
 function App() {
-  const [url, setUrl] = useState<string>("");
+  const [url, setUrl] = useState<string>('');
   const [answer, setAnswer] = useState<AnswerData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState<boolean>(false);
-  const [solverMode, setSolverMode] = useState<"solve" | "underclued" | "tilesRemaining">("solve");
+  const [solverMode, setSolverMode] = useState<'solve' | 'underclued' | 'tilesRemaining'>('solve');
   const [tilesRemaining, setTilesRemaining] = useState<number | null>(null);
 
   const runSolver = async () => {
@@ -40,29 +45,29 @@ function App() {
 
     let json;
     try {
-      json = puzzleToJson(puzzle);
-    } catch (e: any) {
-      setError(e.message);
+      json = gridToJson(puzzle.grid);
+    } catch (e) {
+      setError((e as Error).message);
       setAnswer(null);
       return;
     }
-    
+
     if (workerInstance === null) {
-      workerInstance = new ComlinkWorker<typeof import("./worker")>(new URL("./worker", import.meta.url));
+      workerInstance = new ComlinkWorker<typeof import('./worker')>(new URL('./worker', import.meta.url));
     }
 
-    const useUnderclued = solverMode === "underclued" || solverMode === "tilesRemaining";
+    const useUnderclued = solverMode === 'underclued' || solverMode === 'tilesRemaining';
     setIsRunning(true);
-    const result: SolverResult = await workerInstance!.solve(json, useUnderclued);
+    const result: SolverResult = await await workerInstance!.solve(json, useUnderclued);
     setIsRunning(false);
 
     if (result === null) {
-      setError("No solution found");
+      setError('No solution found');
       setAnswer(null);
       return;
     }
 
-    if ("error" in result) {
+    if ('error' in result) {
       setError(result.error);
       setAnswer(null);
       return;
@@ -70,7 +75,7 @@ function App() {
 
     setError(null);
 
-    if (solverMode === "tilesRemaining") {
+    if (solverMode === 'tilesRemaining') {
       const remaining = countTilesRemaining(puzzle.grid.tiles, result);
       setTilesRemaining(remaining);
       setAnswer(null);
@@ -94,31 +99,46 @@ function App() {
       </div>
 
       <div>
-        <span style={{ borderRight: "1px solid black", marginRight: "5px" }}>
+        <span style={{ borderRight: '1px solid black', marginRight: '5px' }}>
           <label htmlFor="solve">Solve</label>
-          <input type="radio" id="solve" name="mode" value="solve" checked={solverMode === "solve"} onChange={() => setSolverMode("solve")} />
+          <input
+            type="radio"
+            id="solve"
+            name="mode"
+            value="solve"
+            checked={solverMode === 'solve'}
+            onChange={() => setSolverMode('solve')}
+          />
         </span>
-        <span style={{ borderRight: "1px solid black", marginRight: "5px" }}>
+        <span style={{ borderRight: '1px solid black', marginRight: '5px' }}>
           <label htmlFor="underclued">Underclued</label>
-          <input type="radio" id="underclued" name="mode" value="underclued" checked={solverMode === "underclued"} onChange={() => setSolverMode("underclued")} />
+          <input
+            type="radio"
+            id="underclued"
+            name="mode"
+            value="underclued"
+            checked={solverMode === 'underclued'}
+            onChange={() => setSolverMode('underclued')}
+          />
         </span>
         <span>
           <label htmlFor="tilesRemaining">Count Tiles Remaining</label>
-          <input type="radio" id="tilesRemaining" name="mode" value="remainingTiles" checked={solverMode === "tilesRemaining"} onChange={() => setSolverMode("tilesRemaining")} />
+          <input
+            type="radio"
+            id="tilesRemaining"
+            name="mode"
+            value="remainingTiles"
+            checked={solverMode === 'tilesRemaining'}
+            onChange={() => setSolverMode('tilesRemaining')}
+          />
         </span>
       </div>
 
-      {
-        tilesRemaining !== null && <div>Tiles remaining: {tilesRemaining}</div>
-      }
-      {
-        error !== null && <div>{error}</div>
-      }
-      {
-        answer !== null && <AnswerBoard {...answer} />
-      }
+      {tilesRemaining !== null && <div>Tiles remaining: {tilesRemaining}</div>}
+      {error !== null && <div>{error}</div>}
+      {answer !== null && <AnswerBoard {...answer} />}
     </>
-  )
+  );
 }
 
-export default App
+export default App;

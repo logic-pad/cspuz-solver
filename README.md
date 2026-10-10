@@ -52,6 +52,15 @@ Prerequisites:
 
 ## Build & publish the npm package (`logic-pad-solver-core`)
 
+First compile cspuz_core to WebAssembly:
+
+```
+cd ../cspuz_core
+./build_cspuz_solver_backend.sh release
+```
+
+Then build the solver package:
+
 ```
 cd packages/logic-pad-solver-core
 npm install

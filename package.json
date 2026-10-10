@@ -10,11 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@logic-pad/core": "^0.4.2",
+    "@logic-pad/core": "^0.27.2",
     "comlink": "^4.4.2",
+    "logic-pad-solver-core": "file:./packages/logic-pad-solver-core",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "logic-pad-solver-core": "file:./packages/logic-pad-solver-core"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
@@ -30,5 +30,8 @@
     "vite": "^6.0.9",
     "vite-plugin-comlink": "^5.1.0",
     "vite-plugin-singlefile": "^2.1.0"
+  },
+  "allowScripts": {
+    "esbuild@0.25.0": true
   }
 }
