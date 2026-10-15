@@ -116,8 +116,8 @@ export function gridToJson(grid: GridData): PuzzleData {
       rules.push({
         type: 'number',
         tiles: (symbols as AreaNumberSymbol[]).map(s => ({
-          x: Math.floor(s.x),
-          y: Math.floor(s.y),
+          x: Math.round(s.x * 2),
+          y: Math.round(s.y * 2),
           number: s.number,
         })),
       });
@@ -125,8 +125,8 @@ export function gridToJson(grid: GridData): PuzzleData {
       rules.push({
         type: 'letter',
         tiles: (symbols as LetterSymbol[]).map(s => ({
-          x: Math.floor(s.x),
-          y: Math.floor(s.y),
+          x: Math.round(s.x * 2),
+          y: Math.round(s.y * 2),
           letter: s.letter,
         })),
       });

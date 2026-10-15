@@ -143,9 +143,9 @@ test('number', () => {
       {
         type: 'number',
         tiles: [
-          { x: 1, y: 0, number: 4 },
-          { x: 2, y: 0, number: 7 },
-          { x: 1, y: 1, number: 5 },
+          { x: 2, y: 0, number: 4 },
+          { x: 4, y: 0, number: 7 },
+          { x: 2, y: 2, number: 5 },
         ],
       },
     ],
@@ -163,10 +163,10 @@ test('letter', () => {
       {
         type: 'letter',
         tiles: [
-          { x: 1, y: 0, letter: 'A' },
-          { x: 1, y: 1, letter: 'B' },
-          { x: 1, y: 3, letter: 'A' },
-          { x: 4, y: 3, letter: 'B' },
+          { x: 2, y: 0, letter: 'A' },
+          { x: 2, y: 2, letter: 'B' },
+          { x: 2, y: 6, letter: 'A' },
+          { x: 8, y: 6, letter: 'B' },
         ],
       },
     ],
@@ -358,9 +358,9 @@ test('number-offbyx', () => {
       {
         type: 'number',
         tiles: [
-          { x: 1, y: 0, number: 10 },
-          { x: 2, y: 0, number: 5 },
-          { x: 1, y: 1, number: 7 },
+          { x: 2, y: 0, number: 10 },
+          { x: 4, y: 0, number: 5 },
+          { x: 2, y: 2, number: 7 },
         ],
       },
       {
@@ -472,5 +472,86 @@ describe('symbolCountWithGalaxy', () => {
       ],
     };
     expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['OOOOO', 'OO.#.', 'OO.#.', 'OO.#.']));
+  });
+});
+
+describe('letterBetweenTiles', () => {
+  test('edge forces same color', () => {
+    const puzzle: PuzzleData = {
+      width: 5,
+      height: 2,
+      connections: [],
+      tiles: makeTilesData(['#..OO', 'O#O#O']),
+      rules: [
+        {
+          type: 'letter',
+          tiles: [
+            { x: 0, y: 0, letter: 'A' }, // cell (0, 0), fixed dark
+            { x: 3, y: 0, letter: 'A' }, // the edge between the cell (0, 1) and (0, 2)
+          ],
+        },
+      ],
+    };
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['###OO', 'O#O#O']));
+  });
+
+  test('non-existing tile is error', () => {
+    const puzzle: PuzzleData = {
+      width: 5,
+      height: 2,
+      connections: [],
+      tiles: makeTilesData(['.....', '.. ..']),
+      rules: [
+        {
+          type: 'letter',
+          tiles: [
+            { x: 4, y: 1, letter: 'A' }, // the edge between the cell (0, 2) and (1, 2); (1, 2) is missing
+          ],
+        },
+      ],
+    };
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual({
+      error: "letter tile on non-existing tile; don't do this",
+    });
+  });
+});
+
+describe('areaNumberBetweenTiles', () => {
+  test('edge forces same color and region size', () => {
+    const puzzle: PuzzleData = {
+      width: 5,
+      height: 2,
+      connections: [],
+      tiles: makeTilesData(['##..#', '#####']),
+      rules: [
+        {
+          type: 'number',
+          tiles: [
+            { x: 5, y: 0, number: 2 }, // the edge between the cell (0, 2) and (0, 3)
+          ],
+        },
+      ],
+    };
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['##OO#', '#####']));
+  });
+
+  test('out-of-bounds is error', () => {
+    const puzzle: PuzzleData = {
+      width: 5,
+      height: 2,
+      connections: [],
+      tiles: makeTilesData(['.....', '.....']),
+      rules: [
+        {
+          type: 'number',
+          tiles: [
+            { x: 0, y: 4, number: 3 }, // row 2 is out of bounds
+          ],
+        },
+      ],
+    };
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual({
+      error: "area number tile on non-existing tile; don't do this",
+    });
   });
 });
