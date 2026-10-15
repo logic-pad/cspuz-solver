@@ -86,6 +86,12 @@ pub struct GalaxyTile {
     pub x: usize,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct UnsupportedTile {
+    pub y: usize,
+    pub x: usize,
+}
+
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub enum SymbolCountKind {
     #[serde(rename = "atMost")]
@@ -117,6 +123,8 @@ pub enum Rule {
     Lotus { tiles: Vec<LotusTile> },
     #[serde(rename = "galaxy")]
     Galaxy { tiles: Vec<GalaxyTile> },
+    #[serde(rename = "unsupported")]
+    Unsupported { tiles: Vec<UnsupportedTile> },
     #[serde(rename = "sameShape")]
     SameShape { color: Color },
     #[serde(rename = "uniqueShape")]

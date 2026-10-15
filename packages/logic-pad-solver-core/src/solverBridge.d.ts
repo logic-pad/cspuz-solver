@@ -8,10 +8,11 @@ export interface Tile {
 }
 
 /*
-Note: for "lotus" and "galaxy" rules, the x and y coordinates should be multiplied by 2
+Note: for "lotus", "galaxy", "number" and "letter" rules, the x and y coordinates should be multiplied by 2
 so that we can handle these symbols on edges or corners of tiles (see `logic-pad-solver/src/jsonify.ts` as an example).
+For "unsupported" rules, the x and y coordinates should also be multiplied by 2; unsupported symbols have no logic
+but are counted by the symbols-per-region rule, and may be placed between tiles.
 For other rules, the x and y coordinates should be as is.
-TODO: clarify what happens when x and y are not integers.
 */
 export type Rule =
   | { type: 'connectAll'; color: Color }
@@ -28,7 +29,8 @@ export type Rule =
   | { type: 'dart'; tiles: readonly { x: number; y: number; orientation: Orientation; number: number }[] }
   | { type: 'viewpoint'; tiles: readonly { x: number; y: number; number: number }[] }
   | { type: 'lotus'; tiles: readonly { x: number; y: number; orientation: Orientation }[] }
-  | { type: 'galaxy'; tiles: readonly { x: number; y: number }[] };
+  | { type: 'galaxy'; tiles: readonly { x: number; y: number }[] }
+  | { type: 'unsupported'; tiles: readonly { x: number; y: number }[] };
 
 export interface PuzzleData {
   width: number;

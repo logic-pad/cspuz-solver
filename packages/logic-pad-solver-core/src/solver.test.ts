@@ -555,3 +555,61 @@ describe('areaNumberBetweenTiles', () => {
     });
   });
 });
+
+describe('unsupported', () => {
+  test('has no logic', () => {
+    const puzzle: PuzzleData = {
+      width: 5,
+      height: 3,
+      connections: [],
+      tiles: makeTilesData([' ....', '..#..', 'O.#.O']),
+      rules: [
+        { type: 'connectAll', color: 'light' },
+        { type: 'unsupported', tiles: [{ x: 0, y: 2 }] }, // the cell (1, 0)
+      ],
+    };
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData([' OOO.', '.O#..', 'O.#.O']));
+  });
+
+  test('counts in symbolCount', () => {
+    const puzzle: PuzzleData = {
+      width: 3,
+      height: 2,
+      connections: [],
+      tiles: makeTilesData(['# #', '# #']),
+      rules: [
+        { type: 'unsupported', tiles: [{ x: 0, y: 0 }, { x: 4, y: 0 }] }, // the cells (0, 0) and (0, 2)
+        { type: 'symbolCount', number: 1, kind: 'exactly', color: 'dark' },
+      ],
+    };
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['# #', '# #']));
+  });
+
+  test('edge counts once per region', () => {
+    const puzzle: PuzzleData = {
+      width: 3,
+      height: 1,
+      connections: [],
+      tiles: makeTilesData(['##O']),
+      rules: [
+        { type: 'unsupported', tiles: [{ x: 1, y: 0 }] }, // the edge between the cell (0, 0) and (0, 1)
+        { type: 'symbolCount', number: 1, kind: 'exactly', color: 'dark' },
+      ],
+    };
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['##O']));
+  });
+
+  test('corner counts in every touched region', () => {
+    const puzzle: PuzzleData = {
+      width: 2,
+      height: 2,
+      connections: [],
+      tiles: makeTilesData(['#O', 'O#']),
+      rules: [
+        { type: 'unsupported', tiles: [{ x: 1, y: 1 }] }, // the corner shared by all four cells
+        { type: 'symbolCount', number: 1, kind: 'exactly', color: 'dark' },
+      ],
+    };
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['#O', 'O#']));
+  });
+});

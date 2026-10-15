@@ -15,7 +15,7 @@ import LetterSymbol, { instance as letterInstance } from '@logic-pad/core/data/s
 import LotusSymbol, { instance as lotusInstance } from '@logic-pad/core/data/symbols/lotusSymbol.js';
 import MinesweeperSymbol, { instance as minesweeperInstance } from '@logic-pad/core/data/symbols/minesweeperSymbol.js';
 import ViewpointSymbol, { instance as viewpointInstance } from '@logic-pad/core/data/symbols/viewpointSymbol.js';
-import { instance as unsupportedInstance } from '@logic-pad/core/data/symbols/unsupportedSymbol.js';
+import UnsupportedSymbol, { instance as unsupportedInstance } from '@logic-pad/core/data/symbols/unsupportedSymbol.js';
 import TileData from '@logic-pad/core/data/tile.js';
 import GridData from '@logic-pad/core/data/grid.js';
 
@@ -171,7 +171,13 @@ export function gridToJson(grid: GridData): PuzzleData {
         tiles,
       });
     } else if (rule === unsupportedInstance.id) {
-      continue;
+      rules.push({
+        type: 'unsupported',
+        tiles: (symbols as UnsupportedSymbol[]).map(s => ({
+          x: Math.round(s.x * 2),
+          y: Math.round(s.y * 2),
+        })),
+      });
     } else if (symbols.some(s => s.necessaryForCompletion)) {
       throw new Error(`Unknown symbol type: ${rule}`);
     }

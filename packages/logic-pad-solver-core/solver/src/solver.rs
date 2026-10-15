@@ -1,7 +1,7 @@
 use crate::puzzle::{AreaNumberTile, Color, Connection, DartTile, GalaxyTile, LetterTile, LotusTile, MinesweeperTile, Orientation, Puzzle, Rule, SymbolCountKind, Tile, ViewpointTile};
 
-use cspuz_rs::solver::{all, int_constant, BoolVarArray2D, Solver, count_true, consecutive_prefix_true};
-use cspuz_rs::graph;
+use cspuz_rs::solver::{all, int_constant, BoolExpr, BoolVarArray2D, Solver, count_true, consecutive_prefix_true, TRUE};
+use cspuz_rs::graph::{self, Graph};
 use crate::shapes::{ConstraintType, ShapesConstraint};
 
 fn rotate_pattern(pattern: &[Vec<Color>]) -> Vec<Vec<Color>> {
@@ -686,7 +686,7 @@ impl<'a> LogicPadSolver<'a> {
         }
     }
 
-    fn add_symbol_count(&mut self, constraints: &[(i32, SymbolCountKind, Color)], symbol_cells: &[(usize, usize)]) {
+    fn add_symbol_count(&mut self, constraints: &[(i32, SymbolCountKind, Color)], symbol_cells: &[Vec<(usize, usize)>]) {
         let height = self.height;
         let width = self.width;
 
@@ -702,27 +702,46 @@ impl<'a> LogicPadSolver<'a> {
             }
         }
 
+        let outer = height * width;
         let mut symbol_group = vec![];
-        for &(y, x) in symbol_cells {
+        for touched in symbol_cells {
             let indicator = self.solver.bool_var_2d((height, width));
-            self.solver.add_expr(indicator.at((y, x)));
-            graph::active_vertices_connected_2d(&mut self.solver, &indicator);
-
             self.solver.add_expr(indicator.imp(&self.is_black | &self.is_white));
+
             for &(p, q) in &adj_pairs {
                 self.solver.add_expr(
-                    (self.is_black.at(p) & self.is_black.at(q)).imp(indicator.at(p).iff(indicator.at(q)))
-                );
-                self.solver.add_expr(
-                    (self.is_white.at(p) & self.is_white.at(q)).imp(indicator.at(p).iff(indicator.at(q)))
-                );
-                self.solver.add_expr(
-                    (self.is_black.at(p) ^ self.is_black.at(q)).imp(!(indicator.at(p) & indicator.at(q)))
-                );
-                self.solver.add_expr(
-                    (self.is_white.at(p) ^ self.is_white.at(q)).imp(!(indicator.at(p) & indicator.at(q)))
+                    ((self.is_black.at(p) & self.is_black.at(q)) | (self.is_white.at(p) & self.is_white.at(q)))
+                        .imp(indicator.at(p).iff(indicator.at(q)))
                 );
             }
+
+            for &(y, x) in touched {
+                self.solver.add_expr(indicator.at((y, x)));
+            }
+
+            let mut g = Graph::new(height * width + 1);
+            let mut edge_active: Vec<BoolExpr> = vec![];
+            for &(p, q) in &adj_pairs {
+                let (py, px) = p;
+                let (qy, qx) = q;
+                g.add_edge(py * width + px, qy * width + qx);
+                edge_active.push(
+                    (self.is_black.at(p) & self.is_black.at(q)) | (self.is_white.at(p) & self.is_white.at(q))
+                );
+            }
+            for &(y, x) in touched {
+                g.add_edge(y * width + x, outer);
+                edge_active.push(TRUE);
+            }
+            let mut vertex_active: Vec<BoolExpr> = vec![];
+            for y in 0..height {
+                for x in 0..width {
+                    vertex_active.push(indicator.at((y, x)).expr());
+                }
+            }
+            vertex_active.push(TRUE);
+
+            graph::active_vertices_connected_via_active_edges(&mut self.solver, vertex_active, edge_active, &g);
 
             symbol_group.push(indicator);
         }
@@ -856,6 +875,7 @@ pub fn solve(puzzle: &Puzzle, underclued: bool) -> Result<Option<Vec<Vec<Option<
                 solver.add_minesweeper(tiles)?;
             }
             Rule::AreaNumber { tiles: _ } => (),
+            Rule::Unsupported { tiles: _ } => (),
             Rule::Letter { tiles } => {
                 solver.add_letters(tiles, &puzzle.tiles)?;
             }
@@ -946,27 +966,44 @@ pub fn solve(puzzle: &Puzzle, underclued: bool) -> Result<Option<Vec<Vec<Option<
                 Rule::ForbiddenPattern { pattern: _ } => (),
                 Rule::Minesweeper { tiles } => {
                     for tile in tiles {
-                        symbol_cells.push((tile.y, tile.x));
+                        symbol_cells.push(vec![(tile.y, tile.x)]);
                     }
                 }
                 Rule::AreaNumber { tiles } => {
                     for tile in tiles {
-                        symbol_cells.push((tile.y / 2, tile.x / 2));
+                        symbol_cells.push(vec![(tile.y / 2, tile.x / 2)]);
                     }
                 }
                 Rule::Letter { tiles } => {
                     for tile in tiles {
-                        symbol_cells.push((tile.y / 2, tile.x / 2));
+                        symbol_cells.push(vec![(tile.y / 2, tile.x / 2)]);
+                    }
+                }
+                Rule::Unsupported { tiles } => {
+                    for tile in tiles {
+                        let ymin = tile.y / 2;
+                        let xmin = tile.x / 2;
+                        let ymax = (tile.y + 1) / 2;
+                        let xmax = (tile.x + 1) / 2;
+                        let mut touched = vec![];
+                        for y in ymin..=ymax {
+                            for x in xmin..=xmax {
+                                if y < puzzle.height && x < puzzle.width && puzzle.tiles[y][x].exists {
+                                    touched.push((y, x));
+                                }
+                            }
+                        }
+                        symbol_cells.push(touched);
                     }
                 }
                 Rule::Dart { tiles } => {
                     for tile in tiles {
-                        symbol_cells.push((tile.y, tile.x));
+                        symbol_cells.push(vec![(tile.y, tile.x)]);
                     }
                 }
                 Rule::Viewpoint { tiles } => {
                     for tile in tiles {
-                        symbol_cells.push((tile.y, tile.x));
+                        symbol_cells.push(vec![(tile.y, tile.x)]);
                     }
                 }
                 Rule::Lotus { tiles } => {
@@ -974,7 +1011,7 @@ pub fn solve(puzzle: &Puzzle, underclued: bool) -> Result<Option<Vec<Vec<Option<
                         if !(tile.y % 2 == 0 && tile.x % 2 == 0) {
                             return Err("lotus not on cell center is not supported for symbol count");
                         }
-                        symbol_cells.push((tile.y / 2, tile.x / 2));
+                        symbol_cells.push(vec![(tile.y / 2, tile.x / 2)]);
                     }
                 }
                 Rule::Galaxy { tiles } => {
@@ -982,7 +1019,7 @@ pub fn solve(puzzle: &Puzzle, underclued: bool) -> Result<Option<Vec<Vec<Option<
                         if !(tile.y % 2 == 0 && tile.x % 2 == 0) {
                             return Err("galaxy not on cell center is not supported for symbol count");
                         }
-                        symbol_cells.push((tile.y / 2, tile.x / 2));
+                        symbol_cells.push(vec![(tile.y / 2, tile.x / 2)]);
                     }
                 }
                 Rule::SameShape { color: _ } => (),
