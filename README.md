@@ -60,14 +60,7 @@ Prerequisites:
 
 ### Build & publish the npm package (`@logic-pad/cspuz-solver`)
 
-First compile cspuz_core to WebAssembly:
-
-```
-cd ../cspuz_core
-./build_cspuz_solver_backend.sh release
-```
-
-Then build the solver package:
+Build the solver package:
 
 ```
 cd packages/@logic-pad/cspuz-solver
