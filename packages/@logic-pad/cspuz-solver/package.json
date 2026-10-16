@@ -1,6 +1,6 @@
 {
   "name": "@logic-pad/cspuz-solver",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "A solver for https://logic-pad.com/ based on cspuz",
   "main": "index.js",
   "scripts": {
