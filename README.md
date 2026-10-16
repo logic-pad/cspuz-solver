@@ -1,6 +1,10 @@
+# @logic-pad/cspuz-solver
+
+> Forked from [semiexp/logic-pad-solver](https://github.com/semiexp/logic-pad-solver). Huge thanks to [semiexp](https://github.com/semiexp) for the powerful cspuz solver and the original Logic Pad solver implementation.
+
 A solver for [Logic Pad](https://logic-pad.com) based on cspuz.
 
-# Supported rules
+## Supported rules
 
 - Global rules
   - Forbidden patterns (`Don't make this pattern`)
@@ -18,20 +22,18 @@ A solver for [Logic Pad](https://logic-pad.com) based on cspuz.
   - Letter
   - Viewpoint
   - Dart
-  - Lotus
-  - Galaxy
+  - Lotus (with dual-color support)
+  - Galaxy (with dual-color support)
   - Minesweeper
 
-Lotus and galaxy symbols may be placed on a tile, on an edge between two tiles, or on a corner of tiles. When such a symbol touches tiles of different colors, the mirrored regions may have opposite colors as long as their shapes are symmetrical. A diagonal lotus (e.g. `up-right`) on an edge between two tiles has no axis of symmetry and is rejected, unless every tile it touches is missing.
-
-# Repository layout
+## Repository layout
 
 This repo has two parts:
 
 - `packages/@logic-pad/cspuz-solver` — the solver, published to npm as [`@logic-pad/cspuz-solver`](https://www.npmjs.com/package/@logic-pad/cspuz-solver).
 - the web app at the repo root (a Vite + React front-end that consumes the package above via a `file:` dependency).
 
-# Build
+## Build
 
 Prerequisites:
 
@@ -56,7 +58,7 @@ Prerequisites:
 
 > The `build-rust` script uses POSIX commands (`cd`, `cp`, `&&`); on Windows run it from a POSIX shell such as WSL or Git Bash.
 
-## Build & publish the npm package (`@logic-pad/cspuz-solver`)
+### Build & publish the npm package (`@logic-pad/cspuz-solver`)
 
 First compile cspuz_core to WebAssembly:
 
@@ -76,7 +78,7 @@ npm pack             # produces @logic-pad/cspuz-solver-<version>.tgz
 
 To publish, either run `npm publish --provenance --access public` from that directory, or trigger the **Publish @logic-pad/cspuz-solver** workflow (`.github/workflows/publish.yml`) on GitHub, which sets up the toolchain and publishes for you.
 
-## Build / run the web app
+### Build / run the web app
 
 From the repo root:
 
