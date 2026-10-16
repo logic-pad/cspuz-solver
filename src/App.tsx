@@ -4,7 +4,7 @@ import { TileData } from '@logic-pad/core';
 import { gridToJson } from './jsonify';
 import { AnswerBoard } from './board';
 
-import { SolverResult } from 'logic-pad-solver-core';
+import { SolverResult } from '@logic-pad/cspuz-solver';
 import { urlToPuzzle } from './parser';
 import { Remote } from 'comlink';
 

@@ -1,5 +1,5 @@
 {
-  "name": "logic-pad-solver-core",
+  "name": "@logic-pad/cspuz-solver",
   "version": "0.1.2",
   "description": "A solver for https://logic-pad.com/ based on cspuz",
   "main": "index.js",
@@ -12,7 +12,7 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/semiexp/logic-pad-solver.git"
+    "url": "https://github.com/logic-pad/cspuz-solver.git"
   },
   "publishConfig": {
     "provenance": true

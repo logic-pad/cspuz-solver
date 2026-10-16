@@ -12,7 +12,7 @@
   "dependencies": {
     "@logic-pad/core": "^0.27.2",
     "comlink": "^4.4.2",
-    "logic-pad-solver-core": "file:./packages/logic-pad-solver-core",
+    "@logic-pad/cspuz-solver": "file:./packages/@logic-pad/cspuz-solver",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

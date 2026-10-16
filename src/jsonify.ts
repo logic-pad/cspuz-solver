@@ -19,7 +19,7 @@ import UnsupportedSymbol, { instance as unsupportedInstance } from '@logic-pad/c
 import TileData from '@logic-pad/core/data/tile.js';
 import GridData from '@logic-pad/core/data/grid.js';
 
-import { PuzzleData, Rule } from 'logic-pad-solver-core';
+import { PuzzleData, Rule } from '@logic-pad/cspuz-solver';
 
 function canonizeTiles(tileData: readonly (readonly TileData[])[]): TileData[][] {
   const ret = [];

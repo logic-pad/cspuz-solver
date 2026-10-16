@@ -28,7 +28,7 @@ Lotus and galaxy symbols may be placed on a tile, on an edge between two tiles, 
 
 This repo has two parts:
 
-- `packages/logic-pad-solver-core` — the solver, published to npm as [`logic-pad-solver-core`](https://www.npmjs.com/package/logic-pad-solver-core).
+- `packages/@logic-pad/cspuz-solver` — the solver, published to npm as [`@logic-pad/cspuz-solver`](https://www.npmjs.com/package/@logic-pad/cspuz-solver).
 - the web app at the repo root (a Vite + React front-end that consumes the package above via a `file:` dependency).
 
 # Build
@@ -56,7 +56,7 @@ Prerequisites:
 
 > The `build-rust` script uses POSIX commands (`cd`, `cp`, `&&`); on Windows run it from a POSIX shell such as WSL or Git Bash.
 
-## Build & publish the npm package (`logic-pad-solver-core`)
+## Build & publish the npm package (`@logic-pad/cspuz-solver`)
 
 First compile cspuz_core to WebAssembly:
 
@@ -68,13 +68,13 @@ cd ../cspuz_core
 Then build the solver package:
 
 ```
-cd packages/logic-pad-solver-core
+cd packages/@logic-pad/cspuz-solver
 npm install
 npm run build-rust   # compiles the Rust solver to WebAssembly -> src/core/solver.js
-npm pack             # produces logic-pad-solver-core-<version>.tgz
+npm pack             # produces @logic-pad/cspuz-solver-<version>.tgz
 ```
 
-To publish, either run `npm publish --provenance --access public` from that directory, or trigger the **Publish logic-pad-solver-core** workflow (`.github/workflows/publish.yml`) on GitHub, which sets up the toolchain and publishes for you.
+To publish, either run `npm publish --provenance --access public` from that directory, or trigger the **Publish @logic-pad/cspuz-solver** workflow (`.github/workflows/publish.yml`) on GitHub, which sets up the toolchain and publishes for you.
 
 ## Build / run the web app
 
@@ -82,8 +82,8 @@ From the repo root:
 
 ```
 npm install
-# the app links logic-pad-solver-core via `file:`, so build the solver first:
-(cd packages/logic-pad-solver-core && npm run build-rust)
+# the app links @logic-pad/cspuz-solver via `file:`, so build the solver first:
+(cd packages/@logic-pad/cspuz-solver && npm run build-rust)
 npm run dev          # start the dev server
 npm run build        # create a release build (dist/)
 ```
@@ -91,6 +91,6 @@ npm run build        # create a release build (dist/)
 ## Test
 
 ```
-cd packages/logic-pad-solver-core
+cd packages/@logic-pad/cspuz-solver
 npm test
 ```
