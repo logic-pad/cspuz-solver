@@ -8,10 +8,11 @@ export interface Tile {
 }
 
 /*
-Note: for "lotus", "galaxy", "number" and "letter" rules, the x and y coordinates should be multiplied by 2
-so that we can handle these symbols on edges or corners of tiles (see `logic-pad-solver/src/jsonify.ts` as an example).
-For "unsupported" rules, the x and y coordinates should also be multiplied by 2; unsupported symbols have no logic
-but are counted by the symbols-per-region rule, and may be placed between tiles.
+Note: for "lotus", "galaxy", "number", "letter" and "unsupported" rules, the x and y coordinates should be
+multiplied by 2 so that these symbols can be placed on edges or corners of tiles
+(see `logic-pad-solver/src/jsonify.ts` as an example). A lotus or galaxy placed between tiles mirrors the
+regions it touches, which may have opposite colors as long as their shapes are symmetrical. Unsupported
+symbols have no logic but are counted by the symbols-per-region rule.
 For other rules, the x and y coordinates should be as is.
 */
 export type Rule =

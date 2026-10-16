@@ -246,10 +246,28 @@ describe('lotus', () => {
         },
       ],
     };
-    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['.....', 'O####', '.O..O', '.....']));
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['.....', 'O##..', '.O...', '.....']));
   });
 
-  test('edge-invalid', () => {
+  test('edge-dual-color', () => {
+    const puzzle: PuzzleData = {
+      width: 5,
+      height: 4,
+      connections: [],
+      tiles: makeTilesData(['.....', '.##.O', '.....', '.....']),
+      rules: [
+        {
+          type: 'lotus',
+          tiles: [
+            { x: 5, y: 2, orientation: 'up' }, // the dark region (x=1..2, y=1) mirrors the light region (x=3..4, y=1)
+          ],
+        },
+      ],
+    };
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['.....', 'O##OO', '.....', '.....']));
+  });
+
+  test('edge-two-self-symmetric-regions', () => {
     const puzzle: PuzzleData = {
       width: 5,
       height: 4,
@@ -264,9 +282,7 @@ describe('lotus', () => {
         },
       ],
     };
-    expect(solveLogicPad(puzzle, true)).resolves.toEqual({
-      error: 'lotus on invalid position',
-    });
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['.....', '.###.', '.....', '.....']));
   });
 
   test('corner', () => {
@@ -284,9 +300,63 @@ describe('lotus', () => {
         },
       ],
     };
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['.....', '.##..', '.....', '.....']));
+  });
+
+  test('diagonal-corner', () => {
+    const puzzle: PuzzleData = {
+      width: 5,
+      height: 4,
+      connections: [],
+      tiles: makeTilesData(['.....', '.##..', '.....', '.....']),
+      rules: [
+        {
+          type: 'lotus',
+          tiles: [
+            { x: 3, y: 3, orientation: 'up-right' },
+          ],
+        },
+      ],
+    };
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['.....', '.##..', '..#..', '.....']));
+  });
+
+  test('diagonal-edge-invalid', () => {
+    const puzzle: PuzzleData = {
+      width: 5,
+      height: 4,
+      connections: [],
+      tiles: makeTilesData(['.....', '.##..', '.....', '.....']),
+      rules: [
+        {
+          type: 'lotus',
+          tiles: [
+            { x: 4, y: 5, orientation: 'up-right' }, // a diagonal lotus on an edge has no axis of symmetry
+          ],
+        },
+      ],
+    };
     expect(solveLogicPad(puzzle, true)).resolves.toEqual({
       error: 'lotus on invalid position',
     });
+  });
+
+  test('diagonal-edge-on-holes', () => {
+    const puzzle: PuzzleData = {
+      width: 5,
+      height: 4,
+      connections: [],
+      tiles: makeTilesData(['     ', '  #  ', '     ', '     ']),
+      rules: [
+        {
+          type: 'lotus',
+          tiles: [
+            { x: 4, y: 5, orientation: 'up-right' }, // every tile it touches is missing, so it is vacuous
+          ],
+        },
+      ],
+    };
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['.....', '..#..', '.....', '.....']));
   });
 });
 
@@ -324,7 +394,25 @@ describe('galaxy', () => {
         },
       ],
     };
-    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['....#', 'O####', 'O#...', '.O...']));
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['.....', 'O##..', 'O#...', '.O...']));
+  });
+
+  test('edge-dual-color', () => {
+    const puzzle: PuzzleData = {
+      width: 5,
+      height: 4,
+      connections: [],
+      tiles: makeTilesData(['.....', '.##.O', '.....', '.....']),
+      rules: [
+        {
+          type: 'galaxy',
+          tiles: [
+            { x: 5, y: 2 }, // the dark region (x=1..2, y=1) mirrors the light region (x=3..4, y=1)
+          ],
+        },
+      ],
+    };
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['.....', 'O##OO', '.....', '.....']));
   });
 
   test('corner', () => {
@@ -342,8 +430,44 @@ describe('galaxy', () => {
         },
       ],
     };
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['.....', '.##..', '.##..', '.....']));
+  });
+
+  test('asymmetric-region-is-unsat', () => {
+    const puzzle: PuzzleData = {
+      width: 3,
+      height: 2,
+      connections: [],
+      tiles: makeTilesData(['.#.', '.##']),
+      rules: [
+        {
+          type: 'galaxy',
+          tiles: [
+            { x: 1, y: 1 }, // the dark region sticks out past its own mirror image
+          ],
+        },
+      ],
+    };
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual(null);
+  });
+
+  test('partially-missing-is-error', () => {
+    const puzzle: PuzzleData = {
+      width: 3,
+      height: 2,
+      connections: [],
+      tiles: makeTilesData(['.#.', '# #']),
+      rules: [
+        {
+          type: 'galaxy',
+          tiles: [
+            { x: 1, y: 1 }, // (x=1, y=1) is missing while its partner (x=0, y=0) exists
+          ],
+        },
+      ],
+    };
     expect(solveLogicPad(puzzle, true)).resolves.toEqual({
-      error: 'galaxies on corners may cause unexpected behavior',
+      error: "galaxy tile on non-existing tile; don't do this",
     });
   });
 });
@@ -472,6 +596,52 @@ describe('symbolCountWithGalaxy', () => {
       ],
     };
     expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['OOOOO', 'OO.#.', 'OO.#.', 'OO.#.']));
+  });
+});
+
+describe('symbolCountWithSymmetrySymbols', () => {
+  test('galaxy on a corner counts in every region it touches', () => {
+    const puzzle: PuzzleData = {
+      width: 2,
+      height: 2,
+      connections: [],
+      tiles: makeTilesData(['#O', 'O#']),
+      rules: [
+        {
+          type: 'galaxy',
+          tiles: [{ x: 1, y: 1 }], // the corner shared by all four cells
+        },
+        {
+          type: 'symbolCount',
+          number: 1,
+          kind: 'exactly',
+          color: 'dark',
+        },
+      ],
+    };
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['#O', 'O#']));
+  });
+
+  test('lotus on an edge', () => {
+    const puzzle: PuzzleData = {
+      width: 2,
+      height: 1,
+      connections: [],
+      tiles: makeTilesData(['#O']),
+      rules: [
+        {
+          type: 'lotus',
+          tiles: [{ x: 1, y: 0, orientation: 'up' }], // the edge between the cell (0, 0) and (0, 1)
+        },
+        {
+          type: 'symbolCount',
+          number: 1,
+          kind: 'exactly',
+          color: 'dark',
+        },
+      ],
+    };
+    expect(solveLogicPad(puzzle, true)).resolves.toEqual(makeExpectedData(['#O']));
   });
 });
 

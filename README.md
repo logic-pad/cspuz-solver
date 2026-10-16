@@ -16,7 +16,7 @@ A solver for [Logic Pad](https://logic-pad.com) based on cspuz.
   - Galaxy
   - Minesweeper
 
-Some "exceptional" clue arrangements such as "galaxies" on a corner of cell are intentionally unsupported because of their unnatural behavior on Logic Pad.
+Lotus and galaxy symbols may be placed on a tile, on an edge between two tiles, or on a corner of tiles. When such a symbol touches tiles of different colors, the mirrored regions may have opposite colors as long as their shapes are symmetrical. A diagonal lotus (e.g. `up-right`) on an edge between two tiles has no axis of symmetry and is rejected, unless every tile it touches is missing.
 
 # Repository layout
 

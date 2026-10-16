@@ -50,6 +50,28 @@ fn enumerate_patterns(pattern: &[Vec<Color>]) -> Vec<Vec<Vec<Color>>> {
     patterns
 }
 
+fn mirror_cell(ori: Option<Orientation>, sy: i32, sx: i32, y: i32, x: i32) -> (i32, i32) {
+    match ori {
+        Some(Orientation::Down) | Some(Orientation::Up) => (y, sx - x),
+        Some(Orientation::Left) | Some(Orientation::Right) => (sy - y, x),
+        Some(Orientation::DownLeft) | Some(Orientation::UpRight) => ((sy + sx) / 2 - x, (sy + sx) / 2 - y),
+        Some(Orientation::DownRight) | Some(Orientation::UpLeft) => ((sy - sx) / 2 + x, (sx - sy) / 2 + y),
+        None => (sy - y, sx - x),
+    }
+}
+
+fn touched_cells(sy: usize, sx: usize) -> Vec<(usize, usize)> {
+    let mut ret = vec![];
+    for &y in &[sy / 2, (sy + 1) / 2] {
+        for &x in &[sx / 2, (sx + 1) / 2] {
+            if !ret.contains(&(y, x)) {
+                ret.push((y, x));
+            }
+        }
+    }
+    ret
+}
+
 struct LogicPadSolver<'a> {
     solver: Solver<'a>,
     height: usize,
@@ -536,17 +558,91 @@ impl<'a> LogicPadSolver<'a> {
         Ok(())
     }
 
-    fn add_lotus_or_galaxy(&mut self, y: usize, x: usize, sy: usize, sx: usize, ori: Option<Orientation>) -> Result<(), &'static str> {
+    fn component_indicator(
+        &mut self,
+        anchor: (usize, usize),
+        adj_pairs: &[((usize, usize), (usize, usize))],
+    ) -> BoolVarArray2D {
         let height = self.height;
         let width = self.width;
 
-        if !(y < height && x < width) {
-            return Err("lotus out of bounds");
+        let indicator = self.solver.bool_var_2d((height, width));
+        graph::active_vertices_connected_2d(&mut self.solver, &indicator);
+        self.solver.add_expr(indicator.at(anchor));
+        self.solver.add_expr(indicator.imp(&self.is_black | &self.is_white));
+
+        for &(p, q) in adj_pairs {
+            self.solver.add_expr(
+                (self.is_black.at(p) & self.is_black.at(q)).imp(indicator.at(p).iff(indicator.at(q)))
+            );
+            self.solver.add_expr(
+                (self.is_white.at(p) & self.is_white.at(q)).imp(indicator.at(p).iff(indicator.at(q)))
+            );
+            self.solver.add_expr(
+                (self.is_black.at(p) ^ self.is_black.at(q)).imp(!indicator.at(p) | !indicator.at(q))
+            );
+            self.solver.add_expr(
+                (self.is_white.at(p) ^ self.is_white.at(q)).imp(!indicator.at(p) | !indicator.at(q))
+            );
         }
 
-        let block_cells = &self.solver.bool_var_2d((height, width));
-        graph::active_vertices_connected_2d(&mut self.solver, block_cells);
-        self.solver.add_expr(block_cells.at((y, x)));
+        indicator
+    }
+
+    fn add_symmetry(
+        &mut self,
+        sy: usize,
+        sx: usize,
+        ori: Option<Orientation>,
+        tiles: &[Vec<Tile>],
+        err_invalid: &'static str,
+        err_missing: &'static str,
+    ) -> Result<(), &'static str> {
+        let height = self.height;
+        let width = self.width;
+        let sy = sy as i32;
+        let sx = sx as i32;
+
+        let exists = |y: i32, x: i32| -> bool {
+            y >= 0
+                && x >= 0
+                && (y as usize) < height
+                && (x as usize) < width
+                && tiles[y as usize][x as usize].exists
+        };
+
+        let is_diagonal = matches!(
+            ori,
+            Some(Orientation::DownLeft)
+                | Some(Orientation::UpRight)
+                | Some(Orientation::DownRight)
+                | Some(Orientation::UpLeft)
+        );
+        if is_diagonal && (sy + sx) % 2 != 0 {
+            for &(y, x) in &touched_cells(sy as usize, sx as usize) {
+                if exists(y as i32, x as i32) {
+                    return Err(err_invalid);
+                }
+            }
+            return Ok(());
+        }
+
+        let mut touched = touched_cells(sy as usize, sx as usize);
+        touched.sort();
+
+        let mut couples: Vec<((i32, i32), (i32, i32))> = vec![];
+        for &(y, x) in &touched {
+            let q = mirror_cell(ori, sy, sx, y as i32, x as i32);
+            if (y as i32, x as i32) <= q {
+                couples.push(((y as i32, x as i32), q));
+            }
+        }
+
+        for &(p, q) in &couples {
+            if exists(p.0, p.1) != exists(q.0, q.1) {
+                return Err(err_missing);
+            }
+        }
 
         let mut adj_pairs = vec![];
         for y in 0..height {
@@ -559,48 +655,49 @@ impl<'a> LogicPadSolver<'a> {
                 }
             }
         }
-        for (p, q) in adj_pairs {
-            self.solver.add_expr(
-                (self.is_black.at(p) & self.is_black.at(q)).imp(block_cells.at(p).iff(block_cells.at(q)))
-            );
-            self.solver.add_expr(
-                (self.is_white.at(p) & self.is_white.at(q)).imp(block_cells.at(p).iff(block_cells.at(q)))
-            );
-            self.solver.add_expr(
-                (self.is_black.at(p) ^ self.is_black.at(q)).imp(!block_cells.at(p) | !block_cells.at(q))
-            );
-            self.solver.add_expr(
-                (self.is_white.at(p) ^ self.is_white.at(q)).imp(!block_cells.at(p) | !block_cells.at(q))
-            );
+
+        let mut cells: Vec<(i32, i32)> = vec![];
+        for &(p, q) in &couples {
+            if !exists(p.0, p.1) {
+                continue;
+            }
+            for &c in &[p, q] {
+                if !cells.contains(&c) {
+                    cells.push(c);
+                }
+            }
         }
 
-        for y in 0..(height as i32) {
-            for x in 0..(width as i32) {
-                let (y2, x2) = match ori {
-                    Some(Orientation::Down) | Some(Orientation::Up) => {
-                        (y, sx as i32 - x)
-                    }
-                    Some(Orientation::Left) | Some(Orientation::Right) => {
-                        (sy as i32 - y, x)
-                    }
-                    Some(Orientation::DownLeft) | Some(Orientation::UpRight) => {
-                        ((sx + sy) as i32 / 2 - x, (sx + sy) as i32 / 2 - y)
-                    }
-                    Some(Orientation::DownRight) | Some(Orientation::UpLeft) => {
-                        ((sy as i32 - sx as i32) / 2 + x, (sx as i32 - sy as i32) / 2 + y)
-                    }
-                    None => {
-                        (sy as i32 - y, sx as i32 - x)
-                    }
-                };
+        let mut indicators = vec![];
+        for &c in &cells {
+            let indicator = self.component_indicator((c.0 as usize, c.1 as usize), &adj_pairs);
+            indicators.push((c, indicator));
+        }
 
-                if !(0 <= y2 && y2 < height as i32 && 0 <= x2 && x2 < width as i32) {
-                    self.solver.add_expr(!block_cells.at((y as usize, x as usize)));
-                    continue;
-                }
+        for &(p, q) in &couples {
+            if !exists(p.0, p.1) {
+                continue;
+            }
+            let ip = indicators.iter().position(|&(c, _)| c == p).unwrap();
+            let iq = indicators.iter().position(|&(c, _)| c == q).unwrap();
 
-                if (y, x) < (y2, x2) {
-                    self.solver.add_expr(block_cells.at((y as usize, x as usize)).iff(block_cells.at((y2 as usize, x2 as usize))));
+            for y in 0..(height as i32) {
+                for x in 0..(width as i32) {
+                    let (y2, x2) = mirror_cell(ori, sy, sx, y, x);
+
+                    if !(0 <= y2 && y2 < height as i32 && 0 <= x2 && x2 < width as i32) {
+                        self.solver.add_expr(!indicators[ip].1.at((y as usize, x as usize)));
+                        self.solver.add_expr(!indicators[iq].1.at((y as usize, x as usize)));
+                        continue;
+                    }
+
+                    if (y, x) <= (y2, x2) {
+                        self.solver.add_expr(
+                            indicators[ip].1
+                                .at((y as usize, x as usize))
+                                .iff(indicators[iq].1.at((y2 as usize, x2 as usize))),
+                        );
+                    }
                 }
             }
         }
@@ -608,49 +705,31 @@ impl<'a> LogicPadSolver<'a> {
         Ok(())
     }
 
-    fn add_lotuses(&mut self, lotuses: &[LotusTile]) -> Result<(), &'static str> {
+    fn add_lotuses(&mut self, lotuses: &[LotusTile], tiles: &[Vec<Tile>]) -> Result<(), &'static str> {
         for tile in lotuses {
-            match tile.orientation {
-                Orientation::Down | Orientation::Up => {
-                    if tile.y % 2 == 0 {
-                        self.add_lotus_or_galaxy(tile.y / 2, tile.x / 2, tile.y, tile.x, Some(tile.orientation))?;
-                    } else {
-                        return Err("lotus on invalid position");
-                    }
-                }
-                Orientation::Left | Orientation::Right => {
-                    if tile.x % 2 == 0 {
-                        self.add_lotus_or_galaxy(tile.y / 2, tile.x / 2, tile.y, tile.x, Some(tile.orientation))?;
-                    } else {
-                        return Err("lotus on invalid position");
-                    }
-                }
-                Orientation::DownLeft | Orientation::UpRight => {
-                    if tile.x % 2 == 0 && tile.y % 2 == 0 {
-                        self.add_lotus_or_galaxy(tile.y / 2, tile.x / 2, tile.y, tile.x, Some(tile.orientation))?;
-                    } else {
-                        return Err("lotus on invalid position");
-                    }
-                }
-                Orientation::DownRight | Orientation::UpLeft => {
-                    if tile.x % 2 == 0 && tile.y % 2 == 0 {
-                        self.add_lotus_or_galaxy(tile.y / 2, tile.x / 2, tile.y, tile.x, Some(tile.orientation))?;
-                    } else {
-                        return Err("lotus on invalid position");
-                    }
-                }
-            }
+            self.add_symmetry(
+                tile.y,
+                tile.x,
+                Some(tile.orientation),
+                tiles,
+                "lotus on invalid position",
+                "lotus tile on non-existing tile; don't do this",
+            )?;
         }
 
         Ok(())
     }
 
-    fn add_galaxies(&mut self, galaxies: &[GalaxyTile]) -> Result<(), &'static str> {
+    fn add_galaxies(&mut self, galaxies: &[GalaxyTile], tiles: &[Vec<Tile>]) -> Result<(), &'static str> {
         for tile in galaxies {
-            if tile.x % 2 == 1 && tile.y % 2 == 1 {
-                return Err("galaxies on corners may cause unexpected behavior");
-            }
-            self.add_lotus_or_galaxy(tile.y / 2, tile.x / 2, tile.y, tile.x, None)?;
+            self.add_symmetry(
+                tile.y,
+                tile.x,
+                None,
+                tiles,
+                "galaxy on invalid position",
+                "galaxy tile on non-existing tile; don't do this",
+            )?;
         }
 
         Ok(())
@@ -896,10 +975,10 @@ pub fn solve(puzzle: &Puzzle, underclued: bool) -> Result<Option<Vec<Vec<Option<
                 solver.add_viewpoints(tiles)?;
             }
             Rule::Lotus { tiles } => {
-                solver.add_lotuses(tiles)?;
+                solver.add_lotuses(tiles, &puzzle.tiles)?;
             }
             Rule::Galaxy { tiles } => {
-                solver.add_galaxies(tiles)?;
+                solver.add_galaxies(tiles, &puzzle.tiles)?;
             }
             Rule::SameShape { color } => {
                 solver.add_same_shape(*color);
@@ -981,19 +1060,15 @@ pub fn solve(puzzle: &Puzzle, underclued: bool) -> Result<Option<Vec<Vec<Option<
                 }
                 Rule::Unsupported { tiles } => {
                     for tile in tiles {
-                        let ymin = tile.y / 2;
-                        let xmin = tile.x / 2;
-                        let ymax = (tile.y + 1) / 2;
-                        let xmax = (tile.x + 1) / 2;
                         let mut touched = vec![];
-                        for y in ymin..=ymax {
-                            for x in xmin..=xmax {
-                                if y < puzzle.height && x < puzzle.width && puzzle.tiles[y][x].exists {
-                                    touched.push((y, x));
-                                }
+                        for &(y, x) in &touched_cells(tile.y, tile.x) {
+                            if y < puzzle.height && x < puzzle.width && puzzle.tiles[y][x].exists {
+                                touched.push((y, x));
                             }
                         }
-                        symbol_cells.push(touched);
+                        if !touched.is_empty() {
+                            symbol_cells.push(touched);
+                        }
                     }
                 }
                 Rule::Dart { tiles } => {
@@ -1008,18 +1083,28 @@ pub fn solve(puzzle: &Puzzle, underclued: bool) -> Result<Option<Vec<Vec<Option<
                 }
                 Rule::Lotus { tiles } => {
                     for tile in tiles {
-                        if !(tile.y % 2 == 0 && tile.x % 2 == 0) {
-                            return Err("lotus not on cell center is not supported for symbol count");
+                        let mut touched = vec![];
+                        for &(y, x) in &touched_cells(tile.y, tile.x) {
+                            if y < puzzle.height && x < puzzle.width && puzzle.tiles[y][x].exists {
+                                touched.push((y, x));
+                            }
                         }
-                        symbol_cells.push(vec![(tile.y / 2, tile.x / 2)]);
+                        if !touched.is_empty() {
+                            symbol_cells.push(touched);
+                        }
                     }
                 }
                 Rule::Galaxy { tiles } => {
                     for tile in tiles {
-                        if !(tile.y % 2 == 0 && tile.x % 2 == 0) {
-                            return Err("galaxy not on cell center is not supported for symbol count");
+                        let mut touched = vec![];
+                        for &(y, x) in &touched_cells(tile.y, tile.x) {
+                            if y < puzzle.height && x < puzzle.width && puzzle.tiles[y][x].exists {
+                                touched.push((y, x));
+                            }
                         }
-                        symbol_cells.push(vec![(tile.y / 2, tile.x / 2)]);
+                        if !touched.is_empty() {
+                            symbol_cells.push(touched);
+                        }
                     }
                 }
                 Rule::SameShape { color: _ } => (),
